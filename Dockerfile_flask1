@@ -1,0 +1,23 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONBUFFERED=1 \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8
+
+RUN apt-get update -y && \ 
+    apt-get install -y --no-install-recommends \
+        curl \
+        build-essential && \
+    apt-get clean -y && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY ./main /app/main
+WORKDIR /app/main
+RUN python3 -m venv .venv && \
+    . .venv/bin/activate && \
+    pip3 install -r requirements.txt gunicorn flask-jwt-extended
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+USER appuser
+EXPOSE 5000
+CMD [".venv/bin/gunicorn",  "--bind","0.0.0.0:5000","wsgi:app"]

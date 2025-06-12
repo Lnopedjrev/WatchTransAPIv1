@@ -1,0 +1,38 @@
+FROM python:3.12-slim as builder
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONBUFFERED=1 \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8
+
+RUN apt-get update -y && \ 
+    apt-get install -y --no-install-recommends \
+        curl \
+        build-essential && \
+    apt-get clean -y && rm -rf /var/lib/apt/lists/*
+
+COPY ./main/requirements.txt .
+
+RUN --mount=type=cache,target=/root/.cache/pip \ 
+    pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt gunicorn
+
+FROM python:3.11.10-slim as runtime
+
+WORKDIR /app
+
+COPY --from=builder /app/wheels /wheels
+COPY --from=builder /app/requirements.txt .
+
+COPY ./main /app/main
+
+RUN pip install --no-deps /wheels/* \
+    && rm -rf /wheels
+
+WORKDIR /app/main
+
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+USER appuser
+EXPOSE 5000
+CMD [".venv/bin/gunicorn",  "--bind", "0.0.0.0:5000" ,"wsgi:app"]

@@ -1,0 +1,82 @@
+services:
+  web:
+    image: nginx:stable-perl
+    ports:
+      - "443:443"
+    networks:
+      - appnet
+    secrets:
+      - source: nginx_tls_key
+        target: tls.key
+    volumes:
+      - ./certs/watchtrans_public.crt:/etc/nginx/certs/tls.crt
+      - ./default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - api
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update-config:
+          order: start-first
+
+  api:
+    image: lnopedjrev/single_private:1.0
+    secrets:
+      - python_secret
+    environment:
+      - SECRET_FILE=/run/secrets/python_secret
+    expose:
+      - "5000"
+    volumes:
+      - ../logs:/var/log
+    networks:
+      - appnet
+    depends_on:
+      - database
+    deploy:
+      mode: global
+      update-config:
+        order: start-first
+    
+
+  database:
+    image: postgres:15.1-alpine
+    secrets:
+      - db_password
+    environment:
+      - POSTGRES_DB=${PGDATABASE_NAME}
+      - POSTGRES_USER=${PGDATABASE_USERNAME}
+      - POSTGRES_PASSWORD=/run/secrets/db_password
+    volumes:
+      - pgdb:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - appnet
+    user: postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      mode: replicated
+      replicas: 1
+      update-config:
+        order: start-first
+
+networks:
+  appnet:
+volumes:
+  pgdb:
+secrets:
+  python_secret:
+      external: true
+  db_password:
+      external: true
+  nginx_tls_key:
+      external: true
