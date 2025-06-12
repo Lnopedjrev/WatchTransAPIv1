@@ -1,0 +1,56 @@
+services:
+    loki:
+        image: grafana/loki:main-b62aa44
+        volumes:
+            - /home/ubuntu/main/volumes/grafana/loki-config:/etc/loki
+        ports:
+            - "3100:3100"
+        command:
+            -config.file=/etc/loki/loki-config.yml
+            -validation.allow-structured-metadata=false
+        networks:
+            - appnet
+        deploy:
+          mode: replicated
+          replicas: 2
+          update-config:
+            order: start-first
+          resources:
+            limits:
+              cpus: "0.50"
+              memory: "512M"
+            reservations:
+              cpus: "0.25"
+              memory: "256M"
+
+    promtail:
+        image: grafana/promtail:3.2.1
+        volumes:
+            - /home/ubuntu/main/volumes/grafana/promtail-config:/etc/promtail
+            - ../logs:/var/log
+        command: -config.file=/etc/promtail/promtail-config.yml
+        networks:
+            - appnet
+        depends_on:
+            - loki
+        deploy:
+          mode: global
+          update-config:
+            order: start-first
+
+    grafana:
+        image: grafana/grafana:latest
+        volumes:
+            - /home/ubuntu/main/volumes/grafana/grafana-config:/etc/grafana
+        ports:
+            - "3000:3000"
+        networks:
+            - appnet
+        restart: unless-stopped
+        deploy:
+          mode: replicated
+          replicas: 1
+          update-config:
+            order: start-first
+networks:
+  appnet:
