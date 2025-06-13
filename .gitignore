@@ -6,3 +6,5 @@ use_case.conf
 certs/*
 secrets/*
 logs/*
+**/.pyc
+__pycache__/
