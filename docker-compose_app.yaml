@@ -8,7 +8,7 @@ services:
     networks:
       - appnet
     volumes:
-      - /home/ubuntu/main/volumes/nginx/nginx-certs:/etc/nginx/certs
+      - ./certs:/etc/nginx/certs
     depends_on:
       api:
         condition: service_started
@@ -40,7 +40,7 @@ services:
       - POSTGRES_PASSWORD=${PGDATABASE_PASSWORD}
     volumes:
       - pgdb:/var/lib/postgresql/data
-      - /home/ubuntu/main/volumes/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     networks:
@@ -57,4 +57,4 @@ volumes:
   pgdb:
 secrets:
   python_secret:
-      file: /home/ubuntu/main/secrets/.env
+      file: ./env
